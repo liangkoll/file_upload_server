@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>文件上传</title>
+    <script src="/static/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // WebSocket连接
+            // WebSocket连接
+            var socket = new WebSocket("wss://" + window.location.host + "/ws");
+            // 在WebSocket连接建立之前设置Connection头
+            // 接收WebSocket消息
+            socket.onmessage = function (event) {
+                var data = JSON.parse(event.data);
+                var progress = data.progress;
+                // 在这里处理接收到的文件信息，例如更新文件列表和进度条
+            };
+
+            // 发送进度消息
+            function sendProgress(file, progress) {
+                var message = {
+                    file: file,
+                    progress: progress
+                };
+                socket.send(JSON.stringify(message));
+            }
+            var xhrList = []; // 保存所有的XMLHttpRequest对象 new
+            var barfileList = []; // 文件列表
+            // 文件上传
+            $("#uploadForm").submit(function (event) {
+                event.preventDefault();
+                var formData = new FormData(this);
+                var barfiles = formData.getAll("files[]"); // 获取所有选中的文件
+                
+                // 创建XMLHttpRequest对象
+                barfiles.forEach(function (barfile) {
+
+                    var xhr = new XMLHttpRequest();
+                    // stopfile.xhr = xhr; // 将xhr对象存储到barfileList中
+                    var fileFormData = new FormData();
+                    
+                    fileFormData.append('files', barfile);
+                    // 文件名显示
+                    // 上传进度事件
+                    xhr.upload.addEventListener("progress", function (event) {
+                        if (event.lengthComputable) {
+                            var progress = Math.round((event.loaded / event.total) * 100);
+
+                            barfileList.push({ file: barfile.name, progress: progress }); // 添加到文件列表中 
+                            // // 添加以下代码
+                            updatebarFileList(); // 更新文件列表
+                            if (progress == 100) {
+                                updateFileList();
+                            }
+                            sendProgress(barfile, progress); // 发送进度消息
+                        }
+                    });
+                    // 上传完成事件
+                    xhr.addEventListener("load", function (event) {
+                        $("#progress").text("file is uploaded successfully.");
+                    });
+
+                    // 上传失败事件
+                    xhr.addEventListener("error", function (event) {
+                        $("#progress").text(barfile.name + " upload failed.");
+                    });
+                    
+                    // 监听WebSocket连接关闭事件
+                    socket.onclose = function () {
+                        // 清空文件列表和进度列表
+                        barfileList = [];
+                        $("#BarfileList").empty();
+                        $("#progress").empty();
+                    };
+                    // 发送POST请求
+
+                    xhr.open("POST", "/upload");
+                    xhr.send(fileFormData);
+                    xhrList.push(xhr); // 将xhr对象保存到列表中 new
+                });  
+            });
+            // 停止按钮的点击事件处理程序
+            // 停止按钮的点击事件处理程序
+            $("#stopUpload").click(function () {
+                xhrList.forEach(function (xhr) {
+                    xhr.abort(); // 取消上传请求
+                });
+                xhrList = []; // 清空xhr列表
+                barfileList = []; // 清空文件列表
+                $("#BarfileList").empty(); // 清空文件列表显示
+                $("#progress").empty(); // 清空进度显示
+            });
+            // 更新文件列表
+            function updateFileList() {
+                $.get("/list", function (response) {
+                    var files = response.files;
+                    var fileList = $("#fileList");
+                    fileList.empty();
+                    for (var i = 0; i < files.length; i++) {
+                        var file = files[i];
+                        var listItem = $("<li>").text(file.replace(/uploads\\/g, "") + " ");
+                        var file_name = file.replace(/uploads\\/g, "");
+                        var delfile = $("<a>").text("  ---  ");
+                        var deleteButton = $("<a>").text("删除").attr("href","#").click(function () {
+                            deleteFile(file_name);
+                            updateFileList();
+                        });
+                        var downlodfile = $("<a>").text("  ---  ");
+                        // listItem.append(deleteButton);
+                        var downloadLink = $("<a>").attr("href", "/download/" + file.replace(/uploads\\/g, "")).attr("download", file).text( "  " + "下载");
+                        listItem.append(delfile);
+                        listItem.append(deleteButton);
+                        listItem.append(downlodfile);
+                        listItem.append(downloadLink);
+                        fileList.append(listItem);
+
+                    }
+                });
+            }
+            function updatebarFileList(){
+                barfileList.forEach(function (file) {
+                    var listItem = $("#BarfileList").find("li:contains('" + file.file + "')");
+                    if (listItem.length > 0) {
+                        listItem.text(file.file + " - " + file.progress + "%");
+                    } else {
+                        listItem = $("<li>").text(file.file + " - " + file.progress + "%");
+                        $("#BarfileList").append(listItem);
+                    }
+                });
+            }
+            function deleteFile(filename) {
+                $.ajax({
+                    url: "/delete/" + filename,
+                    type: "DELETE",
+                    success: function (response) {
+                        console.log(response);
+                        // 删除成功后刷新文件列表
+                        updateFileList();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            }
+            function deleteFile(filename) {
+                $.ajax({
+                    url: "/delete/" + filename,
+                    type: "DELETE",
+                    success: function (response) {
+                        console.log(response);
+                        // 删除成功后刷新文件列表
+                        updateFileList();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            }
+            // 初始化
+            updateFileList();
+        });
+    </script>
+</head>
+
+<body>
+    <h1>文件上传</h1>
+    
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="files[]" multiple required>
+        <button type="submit">上传</button>
+        <button id="stopUpload" type="button">停止上传</button>
+    </form>
+
+    <h2>上传进度</h2>
+    <div id="progress"></div>
+    <ul id="BarfileList"></ul>
+
+    <h2>文件列表</h2>
+    <ul id="fileList"></ul>
+</body>
+
+</html>
