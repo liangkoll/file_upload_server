@@ -98,23 +98,23 @@
                     var fileList = $("#fileList");
                     fileList.empty();
                     for (var i = 0; i < files.length; i++) {
-                        var file = files[i];
-                        var listItem = $("<li>").text(file.replace(/uploads\\/g, "") + " ");
-                        var file_name = file.replace(/uploads\\/g, "");
-                        var delfile = $("<a>").text("  ---  ");
-                        var deleteButton = $("<a>").text("删除").attr("href","#").click(function () {
-                            deleteFile(file_name);
-                            updateFileList();
-                        });
-                        var downlodfile = $("<a>").text("  ---  ");
-                        // listItem.append(deleteButton);
-                        var downloadLink = $("<a>").attr("href", "/download/" + file.replace(/uploads\\/g, "")).attr("download", file).text( "  " + "下载");
-                        listItem.append(delfile);
-                        listItem.append(deleteButton);
-                        listItem.append(downlodfile);
-                        listItem.append(downloadLink);
-                        fileList.append(listItem);
-
+                        (function () {var file = files[i];
+                            var listItem = $("<li>").text(file.replace(/uploads\\/g, "") + " ");
+                            var file_name = file.replace(/uploads\\/g, "");
+                            var delfile = $("<a>").text("  ---  ");
+                            var deleteButton = $("<a>").text("删除").attr("href","#").click(function () {
+                                deleteFile(file_name);
+                                updateFileList();
+                            });
+                            var downlodfile = $("<a>").text("  ---  ");
+                            // listItem.append(deleteButton);
+                            var downloadLink = $("<a>").attr("href", "/download/" + file.replace(/uploads\\/g, "")).attr("download", file).text( "  " + "下载");
+                            listItem.append(delfile);
+                            listItem.append(deleteButton);
+                            listItem.append(downlodfile);
+                            listItem.append(downloadLink);
+                            fileList.append(listItem);
+                        })();
                     }
                 });
             }
@@ -126,20 +126,6 @@
                     } else {
                         listItem = $("<li>").text(file.file + " - " + file.progress + "%");
                         $("#BarfileList").append(listItem);
-                    }
-                });
-            }
-            function deleteFile(filename) {
-                $.ajax({
-                    url: "/delete/" + filename,
-                    type: "DELETE",
-                    success: function (response) {
-                        console.log(response);
-                        // 删除成功后刷新文件列表
-                        updateFileList();
-                    },
-                    error: function (xhr, status, error) {
-                        console.error(error);
                     }
                 });
             }
